@@ -1,5 +1,9 @@
 import sys
 import os
+import warnings
+
+# Suppress Pydantic V2 warnings from libraries using V1 style
+warnings.filterwarnings("ignore", category=UserWarning, module="pydantic")
 
 # Add project root to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
