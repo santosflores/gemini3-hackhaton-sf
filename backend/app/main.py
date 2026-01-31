@@ -8,7 +8,14 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-load_dotenv()
+# Handle .env loading
+env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
+if os.path.exists(env_path):
+    print(f"Loading .env from: {env_path}")
+    load_dotenv(dotenv_path=env_path)
+else:
+    print(f"Warning: .env not found at {env_path}, attempting default load")
+    load_dotenv()
 from ag_ui_adk import add_adk_fastapi_endpoint
 from ag_ui_adk.adk_agent import ADKAgent
 from backend.agents.agent import root_agent
@@ -29,7 +36,6 @@ from backend.agents.agent import root_agent
 # Wrap the agent in ADKAgent for AG-UI compatibility
 agent = ADKAgent(
     adk_agent=root_agent,
-    app_name="default",
     user_id="user", # Default user for this context
 )
 
