@@ -24,44 +24,13 @@ from ag_ui_adk import add_adk_fastapi_endpoint
 from ag_ui_adk.adk_agent import ADKAgent
 from backend.agents.agent import root_agent
 # from backend.app.config import get_settings
-# from backend.app.observability import setup_logging, setup_tracing, setup_monitoring
-
-# Load settings
-# settings = get_settings()
-
-# Setup Observability
-# if settings.GOOGLE_CLOUD_PROJECT:
-#     if settings.ENABLE_CLOUD_LOGGING:
-#         setup_logging(settings.GOOGLE_CLOUD_PROJECT)
-    
-#     if settings.ENABLE_CLOUD_MONITORING:
-#         setup_monitoring(settings.GOOGLE_CLOUD_PROJECT)
-
 # Wrap the agent in ADKAgent for AG-UI compatibility
 agent = ADKAgent(
     adk_agent=root_agent,
     user_id="user", # Default user for this context
 )
 
-# Import the agent
-# Try importing from backend namespace if running from root, else relative might be needed
-# Import the agent
-# Try importing from backend namespace if running from root, else relative might be needed
-# try:
-#     from backend.agents.agent import root_agent as agent
-# except ImportError as e:
-#     # If we are running inside backend/ or app/ context
-#     try:
-#         from agents.agent import root_agent as agent
-#     except ImportError:
-#          print(f"Failed to import agent: {e}")
-#          raise e
-
 app = FastAPI(title="FieldHouse API")
-
-# Setup Tracing (needs app instance)
-# if settings.GOOGLE_CLOUD_PROJECT and settings.ENABLE_CLOUD_TRACING:
-#     setup_tracing(settings.GOOGLE_CLOUD_PROJECT, app)
 
 # Register AG-UI endpoint
 add_adk_fastapi_endpoint(app, agent, path="/agent-default")
