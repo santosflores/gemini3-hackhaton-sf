@@ -38,6 +38,7 @@ def get_current_time(location: str) -> dict:
     Returns:
         A dictionary containing the status, time, location, and timezone.
     """
+    logger.info(f"get_current_time called with location: {location}")
     clean_location = location.lower().split(',')[0].strip()
     
     timezone_str = CITY_TO_TIMEZONE.get(clean_location)
