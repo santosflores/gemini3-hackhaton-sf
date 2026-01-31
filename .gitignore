@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+dist/
+*.egg-info/
+.env
+.env.local
+list_routes.py
+
+# Node
+node_modules/
+dist/
+build/
+coverage/
+
+# Mac
+.DS_Store
