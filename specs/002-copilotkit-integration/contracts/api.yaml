@@ -1,0 +1,37 @@
+openapi: 3.0.0
+info:
+  title: CopilotKit Agent API
+  version: 1.0.0
+paths:
+  /copilotkit/stream:
+    post:
+      summary: Stream agent interaction
+      description: Accepts chat history and context, returns a stream of AG-UI events.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                messages:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      role:
+                        type: string
+                        enum: [user, assistant, system]
+                      content:
+                        type: string
+                context:
+                  type: object
+                  description: Arbitrary JSON context from frontend
+      responses:
+        '200':
+          description: Successful stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: Stream of AG-UI events

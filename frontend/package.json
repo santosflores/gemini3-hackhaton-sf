@@ -9,12 +9,19 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@ag-ui/client": "0.0.42",
+    "@copilotkitnext/react": "^1.51.2",
+    "@copilotkitnext/runtime": "^1.51.2",
+    "dotenv": "^17.2.3",
     "next": "16.1.6",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/geojson": "^7946.0.16",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
