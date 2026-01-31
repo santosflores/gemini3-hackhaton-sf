@@ -7,7 +7,7 @@ from google.adk import Agent
 
 root_agent = Agent(
     model='gemini-3-flash-preview',
-    name='orchestrator',
+    name='default',
     description="A strategic partner for retail businesses, guiding them to optimal physical locations that foster growth and profitability.",
     instruction="""Your primary role is to orchestrate the retail location analysis.
 1. Start by greeting the user.
