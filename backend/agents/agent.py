@@ -4,18 +4,17 @@ It imports all sub-agents and makes them available for use.
 """
 
 from google.adk import Agent
-
+from .sub_agents.time.agent import currentTimeAgent
 root_agent = Agent(
     model='gemini-3-flash-preview',
-    name='default',
-    description="A strategic partner for retail businesses, guiding them to optimal physical locations that foster growth and profitability.",
-    instruction="""Your primary role is to orchestrate the retail location analysis.
+    name='default', 
+    description="You are an orchestrator agent that is in charge of finding the intent of the user and delegating the task to the appropriate sub-agent.",
+    instruction="""Your primary role is to orchestrate the next play analysis.
 1. Start by greeting the user.
-2. Check if the `TARGET_LOCATION` (Geographic area to analyze (e.g., "Indiranagar, Bangalore")) and `BUSINESS_TYPE` (Type of business (e.g., "coffee shop", "bakery", "gym")) have been provided.
-3. If they are missing, **ask the user clarifying questions to get the required information.**
-4. Once you have the necessary details, call the `IntakeAgent` tool to process them.
-5. After the `IntakeAgent` is successful, delegate the full analysis to the `LocationStrategyPipeline`.
-Your main function is to manage this workflow conversationally.""",
-    # sub_agents=[location_strategy_pipeline],
+2. Ask for a video of the play.
+3. Send the video to the `NextPlayAgent` tool to process it.
+4. After the `NextPlayAgent` is successful, delegate the full analysis to the `NextPlayPipeline`.
+""",
+    sub_agents=[currentTimeAgent],
     # tools=[AgentTool(intake_agent)],  # Part 0: Parse user request
 )
