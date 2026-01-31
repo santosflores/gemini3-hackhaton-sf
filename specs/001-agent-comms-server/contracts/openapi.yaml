@@ -1,0 +1,41 @@
+openapi: 3.0.0
+info:
+  title: Agent Communication Server
+  version: 1.0.0
+paths:
+  /api/chat:
+    post:
+      summary: Interact with an Agent
+      description: Sends a message to a specific agent and streams the response via SSE.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - agent_id
+                - input
+              properties:
+                agent_id:
+                  type: string
+                  example: "orchestrator"
+                input:
+                  type: string
+                  example: "Analyze location in Bangalore"
+                context:
+                  type: object
+                  additionalProperties: true
+      responses:
+        '200':
+          description: Server-Sent Events stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                example: |
+                  event: text
+                  data: Thinking about location...
+                  
+                  event: result
+                  data: Analysis complete.
