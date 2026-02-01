@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 from datetime import datetime
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 
 import cv2
 import chromadb
@@ -25,11 +25,11 @@ FAST_MODEL = "gemini-2.5-flash-lite"
 FINAL_MODEL = "gemini-3-flash-preview"
 EMBED_MODEL = "text-embedding-004"
 
-# We will only send first 6 seconds to Gemini
+# Only send first 6 seconds
 CLIP_START_SEC = 0
 CLIP_DURATION_SEC = 6
 
-# Frame times within the clipped segment
+# Frames within the clipped segment
 FRAME_TIMES_SEC = [0, 2, 4]
 
 # CV motion thresholds
@@ -42,14 +42,14 @@ MAX_API_RETRIES = 5
 BACKOFF_BASE_SEC = 0.6
 BACKOFF_MAX_SEC = 8.0
 
-# Upload ACTIVE polling (avoids FAILED_PRECONDITION)
+# Upload ACTIVE polling
 POLL_INTERVAL_SEC = 1.0
 MAX_WAIT_SEC = 90.0
 
-# Chroma (your persisted folder)
+# Chroma
 CHROMA_DIR = "chroma_store"
 COLLECTION_NAME = "nfl_clips"
-TOP_K = 4
+TOP_K = 6  # increase a bit to harvest more play candidates
 
 OUTPUT_DIR = "inference_outputs"
 
@@ -78,56 +78,49 @@ You are an NFL film analyst.
 TASK:
 Identify which side of the screen is OFFENSE and which is DEFENSE in this pre-snap frame.
 
-Be VERY explicit:
-- Identify jersey colors for offense and defense (e.g., "white", "red", "blue", "black").
-- Identify team names ONLY if clearly visible via logo/wordmark/helmet marking.
-- If team identity is unclear, use "unknown".
-- Do NOT use jersey color to decide offense vs defense.
-
 Rules:
 1) Use the line of scrimmage (ball or center stance).
 2) Offense = side with center + QB alignment (shotgun/under center).
 3) Defense = opposing unit.
-4) If unclear, output "unknown".
+4) Do NOT rely on jersey color to decide offense vs defense.
+5) If unclear, output "unknown".
 
-Return STRICT JSON ONLY (no markdown, no extra text):
+Return STRICT JSON ONLY:
 {
   "offense_side": "left | right | unknown",
   "defense_side": "left | right | unknown",
-  "offense_team": "string | unknown",
-  "defense_team": "string | unknown",
-  "offense_jersey_color": "string | unknown",
-  "defense_jersey_color": "string | unknown",
   "confidence": "high | medium | low",
   "reasoning": "short explanation"
 }
 """
 
-MASTER_PROMPT_WITH_RAG = r"""
+FINAL_ONE_PARAGRAPH_PROMPT = r"""
 ROLE
 You are an expert NFL defensive coordinator with 15+ years of film-room experience.
 
 YOU ARE GIVEN
-- A short pre-snap video clip (first 6 seconds)
+- A short pre-snap video clip (first 6 seconds only)
 - OFFENSE/DEFENSE assignment JSON (GROUND TRUTH)
 - CV motion detection JSON (GROUND TRUTH)
-- RAG retrieved past clip JSONs (examples) for schematic calibration only
+- RAG PLAY CANDIDATES extracted from similar past clips (GROUND TRUTH list of likely concepts)
 
-HARD RULES
+HARD OUTPUT RULES
 - Output MUST be exactly ONE paragraph.
 - NO bullets, NO lists, NO headings, NO JSON, NO markdown.
 - Do NOT mention probabilities or percentages.
-- Analyze ONLY pre-snap info (ignore post-snap results).
-- Use OFF/DEF JSON as TRUE and explicitly mention offense/defense team names + jersey colors.
-- Use CV motion JSON as TRUE for whether motion happened and roughly when.
-- Use RAG examples ONLY to calibrate typical concepts/terminology; do NOT invent team-specific claims.
+- Do NOT mention jersey colors, team names, coaches, or specific players.
+- Only refer to units as "offense" and "defense".
 
-WHAT THE PARAGRAPH MUST INCLUDE
-- Offense vs defense side + team names (or "unknown") + jersey colors
-- Offensive formation and any pre-snap motion
-- Defensive front/shell
-- Top 3 most likely play concepts in ranked order (most → least likely)
-- Brief justification tied strictly to alignment/motion/shell
+ANALYSIS RULES
+- Use ONLY pre-snap information.
+- Treat OFF/DEF JSON as TRUE for screen-side orientation.
+- Treat CV motion JSON as TRUE for whether motion happened and timing.
+- Use RAG PLAY CANDIDATES as the allowed hypothesis space (you can choose from them and/or add 1-2 obvious concepts if the look demands it).
+
+WHAT YOUR SINGLE PARAGRAPH MUST CONTAIN
+1) A concise pre-snap description: formation family + any motion/no-motion + defensive shell/front.
+2) The top 3 most likely play concepts in ranked order (most → least likely), no probabilities.
+3) A short defensive adjustment: what the defense should change next time it sees this same pre-snap picture (coverage rotation, box count, leverage, pressure, etc).
 
 Return exactly ONE paragraph and nothing else.
 """
@@ -154,11 +147,7 @@ def write_json(path: Path, payload: Dict[str, Any]) -> None:
     path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 def cut_subclip(input_video: str, out_video: str, start_sec: int, dur_sec: int) -> None:
-    """
-    Creates a new video containing only [start_sec, start_sec+dur_sec).
-    Uses stream copy if possible; falls back to re-encode if needed.
-    """
-    # Try fast stream copy first (very fast)
+    # Try stream copy
     cmd_copy = [
         "ffmpeg", "-y",
         "-ss", str(start_sec),
@@ -171,7 +160,7 @@ def cut_subclip(input_video: str, out_video: str, start_sec: int, dur_sec: int) 
     if p.returncode == 0 and Path(out_video).exists() and Path(out_video).stat().st_size > 0:
         return
 
-    # Fallback: re-encode (slower but reliable)
+    # Fallback: re-encode
     cmd_reencode = [
         "ffmpeg", "-y",
         "-ss", str(start_sec),
@@ -333,7 +322,6 @@ def get_collection():
         path=CHROMA_DIR,
         settings=Settings(anonymized_telemetry=False),
     )
-    # get_or_create avoids crashing if name mismatch
     return db.get_or_create_collection(COLLECTION_NAME)
 
 def embed_query_text(text: str) -> List[float]:
@@ -353,10 +341,10 @@ def embed_query_text(text: str) -> List[float]:
     raise RuntimeError("Could not parse embedding response")
 
 def build_rag_query(off_def: Dict[str, Any], motion_cv: Dict[str, Any]) -> str:
+    # Keep this simple and stable; embeddings will still generalize
     return (
-        "NFL pre-snap similarity query.\n"
+        "NFL pre-snap similarity.\n"
         f"offense_side={off_def.get('offense_side')}, defense_side={off_def.get('defense_side')}\n"
-        f"offense_color={off_def.get('offense_jersey_color')}, defense_color={off_def.get('defense_jersey_color')}\n"
         f"motion_detected={motion_cv.get('motion_detected')}, timing={motion_cv.get('timing_guess')}\n"
         f"motion_ratios={motion_cv.get('pairwise_motion_ratio')}\n"
     )
@@ -366,25 +354,14 @@ def retrieve_rag_examples(off_def: Dict[str, Any], motion_cv: Dict[str, Any], to
     qtext = build_rag_query(off_def, motion_cv)
     qemb = embed_query_text(qtext)
 
-    # res = col.query(
-    #     query_embeddings=[qemb],
-    #     n_results=top_k,
-    #     include=["documents", "metadatas", "ids", "distances"]
-    # )
-
-    # ids = res.get("ids", [[]])[0]
-    # docs = res.get("documents", [[]])[0]
-    # metas = res.get("metadatas", [[]])[0]
-    # dists = res.get("distances", [[]])[0]
-
-
+    # IMPORTANT: include does NOT accept "ids" (ids are always returned)
     res = col.query(
-    query_embeddings=[qemb],
-    n_results=top_k,
-    include=["documents", "metadatas", "distances"]
-)
+        query_embeddings=[qemb],
+        n_results=top_k,
+        include=["documents", "metadatas", "distances"]
+    )
 
-    ids = res.get("ids", [[]])[0]                 # IDs are ALWAYS returned
+    ids = res.get("ids", [[]])[0]
     docs = res.get("documents", [[]])[0]
     metas = res.get("metadatas", [[]])[0]
     dists = res.get("distances", [[]])[0]
@@ -395,9 +372,120 @@ def retrieve_rag_examples(off_def: Dict[str, Any], motion_cv: Dict[str, Any], to
             "id": ids[i],
             "distance": dists[i],
             "metadata": metas[i],
-            "document": docs[i],  # stored JSON string
+            "document": docs[i],  # stored JSON string (usually)
         })
     return out
+
+
+# ======================================================
+# RAG play candidate extraction
+# ======================================================
+
+def _as_str(x: Any) -> str:
+    return str(x).strip()
+
+def parse_doc_json_maybe(doc: Any) -> Optional[Dict[str, Any]]:
+    """
+    docs are usually stored as JSON strings. Try to parse safely.
+    """
+    if doc is None:
+        return None
+    if isinstance(doc, dict):
+        return doc
+    if not isinstance(doc, str):
+        return None
+    s = doc.strip()
+    if not s:
+        return None
+    try:
+        return json.loads(s)
+    except Exception:
+        # Try extracting {...}
+        a, b = s.find("{"), s.rfind("}")
+        if a != -1 and b != -1 and b > a:
+            try:
+                return json.loads(s[a:b+1])
+            except Exception:
+                return None
+        return None
+
+def normalize_play_name(name: str) -> str:
+    name = name.strip()
+    name = " ".join(name.split())
+    return name
+
+def extract_play_candidates_from_rag(examples: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Pulls potential play concepts out of stored JSONs.
+    Looks for:
+      - stage3_prediction.play_predictions[].play
+      - stage3_prediction.play_call
+      - play_call
+      - play_predictions[].play
+    Returns a de-duped list + a per-example breakdown for debugging.
+    """
+    candidates: List[str] = []
+    by_example: List[Dict[str, Any]] = []
+
+    for ex in examples:
+        doc = ex.get("document")
+        parsed = parse_doc_json_maybe(doc)
+        found: List[str] = []
+
+        if parsed:
+            # Common shapes you might have stored
+            # 1) combined_run.json style
+            for key in ["stage3_prediction", "stage3_prediction_json", "prediction", "final", "stage3"]:
+                if isinstance(parsed.get(key), dict):
+                    parsed = parsed[key]
+                    break
+
+            # Try play_predictions
+            pp = parsed.get("play_predictions")
+            if isinstance(pp, list):
+                for item in pp:
+                    if isinstance(item, dict) and item.get("play"):
+                        found.append(normalize_play_name(_as_str(item["play"])))
+
+            # Try play_call
+            if parsed.get("play_call"):
+                found.append(normalize_play_name(_as_str(parsed["play_call"])))
+
+            # Also handle nested in "stage3_prediction" if doc was full combined
+            if isinstance(parsed.get("stage3_prediction"), dict):
+                inner = parsed["stage3_prediction"]
+                if isinstance(inner.get("play_predictions"), list):
+                    for item in inner["play_predictions"]:
+                        if isinstance(item, dict) and item.get("play"):
+                            found.append(normalize_play_name(_as_str(item["play"])))
+                if inner.get("play_call"):
+                    found.append(normalize_play_name(_as_str(inner["play_call"])))
+
+        # De-dupe within example
+        found = [f for f in found if f]
+        found_unique = list(dict.fromkeys(found))
+
+        if found_unique:
+            candidates.extend(found_unique)
+
+        by_example.append({
+            "id": ex.get("id"),
+            "distance": ex.get("distance"),
+            "found_play_candidates": found_unique
+        })
+
+    # Global de-dupe preserving order
+    candidates = [c for c in candidates if c]
+    unique_candidates = list(dict.fromkeys(candidates))
+
+    # If empty, at least provide a generic fallback list
+    if not unique_candidates:
+        unique_candidates = ["inside zone", "outside zone", "quick game", "play action", "dropback pass"]
+
+    return {
+        "unique_play_candidates": unique_candidates,
+        "by_example": by_example
+    }
 
 
 # ======================================================
@@ -418,25 +506,25 @@ def main():
     out_base.mkdir(parents=True, exist_ok=True)
 
     with tempfile.TemporaryDirectory() as tmp:
-        # 1) Cut first 6 seconds into a temp clip
+        # 1) Cut first 6 seconds
         clipped_path = Path(tmp) / f"{video_name}_first{CLIP_DURATION_SEC}s.mp4"
         cut_subclip(str(input_video), str(clipped_path), CLIP_START_SEC, CLIP_DURATION_SEC)
 
-        # 2) Extract frames from the clipped segment
+        # 2) Extract frames
         print("🎞 Extracting frames from first 6 seconds (0s,2s,4s)")
         frame_paths = extract_frames_at_times(str(clipped_path), tmp, FRAME_TIMES_SEC)
 
-        # 3) CV motion (fast, local)
+        # 3) CV motion
         print("⚡ CV motion")
         motion_cv = detect_motion_cv(frame_paths)
         write_json(out_base / "stage2_motion_cv.json", motion_cv)
 
-        # 4) Upload frames + clipped video (ONLY the 6s clip gets sent)
+        # 4) Upload frames + clipped video
         print("⏳ Uploading 3 frames + 6s video clip")
         frame_files = [upload_and_wait(str(p)) for p in frame_paths]
         video_file = upload_and_wait(str(clipped_path))
 
-        # 5) Stage 1: Offense vs Defense (fast model)
+        # 5) Offense vs Defense
         print("⚡ Offense vs Defense")
         try:
             off_def = generate_json(FAST_MODEL, [frame_files[0], OFF_DEF_PROMPT], attempts=2)
@@ -444,21 +532,21 @@ def main():
             off_def = {
                 "offense_side": "unknown",
                 "defense_side": "unknown",
-                "offense_team": "unknown",
-                "defense_team": "unknown",
-                "offense_jersey_color": "unknown",
-                "defense_jersey_color": "unknown",
                 "confidence": "low",
                 "reasoning": f"fallback_due_to_error: {str(e)[:200]}"
             }
         write_json(out_base / "stage1_offense_defense.json", off_def)
 
-        # 6) RAG
+        # 6) RAG retrieval
         print("📚 RAG lookup")
         examples = retrieve_rag_examples(off_def, motion_cv, top_k=TOP_K)
         write_json(out_base / "rag_examples.json", {"top_k": TOP_K, "examples": examples})
 
-        # 7) Final prediction (one paragraph) — uses ONLY first 6 seconds video
+        # 7) Extract ALL play candidates from RAG examples (de-duped)
+        rag_play_bundle = extract_play_candidates_from_rag(examples)
+        write_json(out_base / "rag_play_candidates.json", rag_play_bundle)
+
+        # 8) Final inference (one paragraph)
         print("🧠 Final inference (one paragraph, top 3 plays, no probabilities)")
         final_text = call_model_with_backoff(
             FINAL_MODEL,
@@ -466,12 +554,12 @@ def main():
                 video_file,
                 "OFFENSE/DEFENSE ASSIGNMENT JSON (GROUND TRUTH):\n" + json.dumps(off_def),
                 "CV MOTION JSON (GROUND TRUTH):\n" + json.dumps(motion_cv),
-                "RAG EXAMPLES (stored JSON strings):\n" + json.dumps(examples),
-                MASTER_PROMPT_WITH_RAG
+                "RAG PLAY CANDIDATES (GROUND TRUTH LIST):\n" + json.dumps(rag_play_bundle["unique_play_candidates"]),
+                FINAL_ONE_PARAGRAPH_PROMPT
             ]
         ).strip()
 
-        # Enforce single paragraph
+        # enforce one paragraph
         final_one_paragraph = " ".join(final_text.split())
         (out_base / "final_paragraph.txt").write_text(final_one_paragraph, encoding="utf-8")
 
@@ -496,6 +584,7 @@ def main():
             "stage1_offense_defense": off_def,
             "stage2_motion_cv": motion_cv,
             "rag_examples": examples,
+            "rag_play_candidates": rag_play_bundle["unique_play_candidates"],
             "final_paragraph": final_one_paragraph
         }
         write_json(out_base / "combined_run.json", combined)
