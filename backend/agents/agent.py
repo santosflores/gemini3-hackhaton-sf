@@ -12,6 +12,7 @@ from typing import Optional
 from google.adk import Agent
 from google.adk.tools import FunctionTool
 from .sub_agents.time.agent import currentTimeAgent
+from .sub_agents.nano_banana.agent import nanoBananaAgent
 
 # Get the project root directory (gemini3-hackhaton-sf)
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -156,7 +157,7 @@ root_agent = Agent(
 
 Be conversational and supportive. If the analysis fails, help troubleshoot and ask for another video.
 """,
-    sub_agents=[currentTimeAgent],
+    sub_agents=[currentTimeAgent, nanoBananaAgent],
     tools=[video_inference_tool],
     output_key="final_paragraph",
 )
