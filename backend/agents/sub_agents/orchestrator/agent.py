@@ -6,7 +6,7 @@ It imports all sub-agents and makes them available for use.
 from google.adk import Agent
 
 root_agent = Agent(
-    model='gemini-3-flash-preview',
+    model='gemini-2.5-flash',
     name='orchestrator',
     description="A strategic partner for retail businesses, guiding them to optimal physical locations that foster growth and profitability.",
     instruction="""Your primary role is to orchestrate the retail location analysis.

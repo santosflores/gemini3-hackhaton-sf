@@ -6,7 +6,7 @@ It imports all sub-agents and makes them available for use.
 from google.adk import Agent
 from .sub_agents.time.agent import currentTimeAgent
 root_agent = Agent(
-    model='gemini-3-flash-preview',
+    model='gemini-2.5-flash',
     name='default', 
     description="You are an orchestrator agent that is in charge of finding the intent of the user and delegating the task to the appropriate sub-agent.",
     instruction="""Your primary role is to orchestrate the next play analysis.

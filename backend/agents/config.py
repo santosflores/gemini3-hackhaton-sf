@@ -1,7 +1,7 @@
 import os
 
 APP_NAME = "GeminiHackathonAgent"
-FAST_MODEL = "gemini-1.5-flash"
+FAST_MODEL = "gemini-2.5-flash"
 
 # Ensure API Key is loaded
 if not os.getenv("GOOGLE_API_KEY"):

@@ -81,7 +81,7 @@ current_time_tool = FunctionTool(func=get_current_time)
 
 currentTimeAgent = Agent(
     name="currentTimeAgent",
-    model="gemini-3-flash-preview", # Matching the root agent's model family usually
+    model="gemini-2.5-flash", # Matching the root agent's model family usually
     description="Current time agent",
     instruction="You are a time agent that can get the current time in a given location.",
     tools=[current_time_tool],
