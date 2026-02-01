@@ -1,6 +1,7 @@
 import sys
 import os
 import warnings
+from pathlib import Path
 
 # Suppress Pydantic V2 warnings from libraries using V1 style
 warnings.filterwarnings("ignore", category=UserWarning, module="pydantic")
@@ -9,7 +10,7 @@ warnings.filterwarnings("ignore", category=UserWarning, module="pydantic")
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 
 # Handle .env loading
@@ -44,6 +45,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Create uploads folder in project root
+UPLOADS_DIR = Path(__file__).parent.parent.parent / "uploads"
+UPLOADS_DIR.mkdir(exist_ok=True)
+
 @app.get("/")
 def health_check():
     return {"status": "ok"}
+
+@app.post("/upload")
+async def upload_video(file: UploadFile = File(...)):
+    file_path = UPLOADS_DIR / file.filename
+    with open(file_path, "wb") as f:
+        content = await file.read()
+        f.write(content)
+    return {"filename": file.filename, "path": str(file_path)}
