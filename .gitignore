@@ -18,3 +18,7 @@ coverage/
 # Mac
 .DS_Store
 uploads/
+
+# Backend local data
+backend/inference_outputs/
+backend/chroma_store/
