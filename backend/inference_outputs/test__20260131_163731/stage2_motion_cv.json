@@ -1,0 +1,18 @@
+{
+  "frame_times_sec": [
+    0,
+    2,
+    4
+  ],
+  "method": "opencv_absdiff_threshold",
+  "thresholds": {
+    "motion_ratio_threshold": 0.012,
+    "diff_threshold": 25
+  },
+  "pairwise_motion_ratio": {
+    "t0_to_t2": 0.159453,
+    "t2_to_t4": 0.164986
+  },
+  "motion_detected": true,
+  "timing_guess": "mid_to_late (2->4s)"
+}

@@ -1,0 +1,10 @@
+{
+  "offense_side": "right",
+  "defense_side": "left",
+  "offense_team": "unknown",
+  "defense_team": "unknown",
+  "offense_jersey_color": "red",
+  "defense_jersey_color": "white",
+  "confidence": "high",
+  "reasoning": "The offense is lined up on the right side of the image with their center and quarterback in a stance, preparing to snap the ball. The defense is positioned on the left side facing the offense."
+}

@@ -1,0 +1,10 @@
+{
+  "offense_side": "right",
+  "defense_side": "left",
+  "offense_team": "unknown",
+  "defense_team": "unknown",
+  "offense_jersey_color": "red",
+  "defense_jersey_color": "white",
+  "confidence": "high",
+  "reasoning": "The offense is on the right side of the screen, aligned in a traditional offensive formation with a center and quarterback ready to take the snap. The defense is on the left side of the screen, spread out in defensive positions."
+}

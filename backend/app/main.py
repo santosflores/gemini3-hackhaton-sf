@@ -60,3 +60,18 @@ async def upload_video(file: UploadFile = File(...)):
         content = await file.read()
         f.write(content)
     return {"filename": file.filename, "path": str(file_path)}
+
+from backend.agents.inference import analyze_video
+from fastapi import HTTPException
+
+@app.post("/analyze")
+async def run_analysis(video_filename: str):
+    video_path = UPLOADS_DIR / video_filename
+    if not video_path.exists():
+        raise HTTPException(status_code=404, detail=f"Video {video_filename} not found in uploads")
+    
+    try:
+        result = analyze_video(str(video_path))
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

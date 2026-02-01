@@ -17,3 +17,5 @@ opentelemetry-exporter-gcp-trace
 opentelemetry-exporter-gcp-monitoring
 opentelemetry-instrumentation-fastapi
 ag-ui-adk
+opencv-python
+chromadb

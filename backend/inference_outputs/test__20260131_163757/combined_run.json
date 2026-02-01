@@ -1,0 +1,52 @@
+{
+  "meta": {
+    "input_video": "/Users/santosflores/Development/gemini3-hackhaton-sf/uploads/test.mp4",
+    "clipped_video_sent_to_gemini": "/var/folders/88/0fkjhsg16hzfnlw5011zyrh00000gn/T/tmpyf6uaun7/test_first6s.mp4",
+    "clip_window_sec": {
+      "start": 0,
+      "duration": 6
+    },
+    "video_name": "test",
+    "run_id": "20260131_163757",
+    "models": {
+      "fast_model_offdef": "gemini-2.5-flash-lite",
+      "final_model": "gemini-3-flash-preview",
+      "embed_model": "text-embedding-004"
+    },
+    "chroma": {
+      "dir": "/Users/santosflores/Development/gemini3-hackhaton-sf/backend/chroma_store",
+      "collection": "nfl_clips",
+      "top_k": 4
+    }
+  },
+  "stage1_offense_defense": {
+    "offense_side": "right",
+    "defense_side": "left",
+    "offense_team": "unknown",
+    "defense_team": "unknown",
+    "offense_jersey_color": "red",
+    "defense_jersey_color": "white",
+    "confidence": "high",
+    "reasoning": "The offense is on the right side of the screen, aligned in a traditional offensive formation with a center and quarterback ready to take the snap. The defense is on the left side of the screen, spread out in defensive positions."
+  },
+  "stage2_motion_cv": {
+    "frame_times_sec": [
+      0,
+      2,
+      4
+    ],
+    "method": "opencv_absdiff_threshold",
+    "thresholds": {
+      "motion_ratio_threshold": 0.012,
+      "diff_threshold": 25
+    },
+    "pairwise_motion_ratio": {
+      "t0_to_t2": 0.159453,
+      "t2_to_t4": 0.164986
+    },
+    "motion_detected": true,
+    "timing_guess": "mid_to_late (2->4s)"
+  },
+  "rag_examples": [],
+  "final_paragraph": "The offense is positioned on the right side of the field in red jerseys, facing off against the defense in white jerseys on the left side. The offense aligns in a shotgun formation with three receivers and a single back, while the defense presents a nickel package showing a single-high safety shell. Motion is detected mid-play as a receiver moves across the formation, likely to identify man versus zone coverage or to create a numbers advantage at the point of attack. Given the single-high look and the pre-snap motion, the three most likely play concepts are an inside zone RPO, a quick-game slant or flat route combination, and a deep-developing Y-cross concept. The inside zone RPO is the primary threat because the motion forces the linebackers to adjust their gaps, while the single-high safety suggests the defense is susceptible to horizontal stretches or vertical shots if they roll into Cover 1 or Cover 3."
+}
