@@ -75,7 +75,7 @@ export default function Home() {
         />
         <div className="flex flex-col items-center gap-8 text-center sm:items-start sm:text-left w-full">
           <div className="space-y-2">
-            <h1 className="text-5xl font-extrabold tracking-tight text-zinc-900 dark:text-white">FieldHouse Agent</h1>
+            <h1 className="text-5xl font-extrabold tracking-tight text-zinc-900 dark:text-white">The Defensive CoordAInator</h1>
             <p className="text-lg text-zinc-500">Analyze your football plays with precision.</p>
           </div>
 

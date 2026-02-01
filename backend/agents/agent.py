@@ -158,4 +158,5 @@ Be conversational and supportive. If the analysis fails, help troubleshoot and a
 """,
     sub_agents=[currentTimeAgent],
     tools=[video_inference_tool],
+    output_key="final_paragraph",
 )
