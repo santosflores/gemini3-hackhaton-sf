@@ -12,6 +12,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"
 from dotenv import load_dotenv
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 # Handle .env loading
 env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
@@ -45,9 +46,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Create uploads folder in project root
 UPLOADS_DIR = Path(__file__).parent.parent.parent / "uploads"
 UPLOADS_DIR.mkdir(exist_ok=True)
+
+# Serve uploaded files
+app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 
 @app.get("/")
 def health_check():
