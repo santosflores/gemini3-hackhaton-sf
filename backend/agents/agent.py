@@ -136,28 +136,38 @@ def run_video_inference(video_filename: str) -> dict:
         })
 
 
-# Create the tool from the function
+# Create the tools
 video_inference_tool = FunctionTool(func=run_video_inference)
+
+def get_all_uploaded_visuals() -> str:
+    """Retrieve all generated play visualization filenames from the uploads directory.
+    
+    This tool should be used to refresh the entire tactical diagram gallery 
+    with all currently available images.
+    
+    Returns:
+        A JSON string containing a list of image filenames.
+    """
+    visuals = [f.name for f in UPLOADS_DIR.glob("play_visual_*.png")]
+    return json.dumps({"image_filenames": sorted(visuals, reverse=True)})
+
+get_visuals_tool = FunctionTool(func=get_all_uploaded_visuals)
 
 
 root_agent = Agent(
     model='gemini-2.5-flash',
     name='default', 
     description="You are an AI coaching assistant that helps analyze football plays from video.",
-    instruction="""Your primary role is to help coaches analyze football plays.
+    instruction="""Your primary role is to help coaches analyze football plays using a sequential pipeline.
 
-1. Start by greeting the user warmly and introducing yourself as their AI coaching assistant.
-2. Ask the user to share a video of the play they want to analyze.
-3. Once the user uploads a video, use the `run_video_inference` tool with the video filename to analyze it.
-4. Present the analysis results to the user in a clear, actionable format:
-   - Identify the offensive and defensive formations
-   - Note any pre-snap motion detected
-   - Share the predicted play concepts (ranked by likelihood)
-   - Provide coaching insights based on the analysis
+PIPELINE STEPS (MUST FOLLOW IN ORDER):
+1. Greet the user as "The Defensive CoordAInator" and request a play video.
+2. Once uploaded, run `run_video_inference` to get the technical analysis.
+3. Present the analysis (formations, motion, predicted plays, insights).
 
-Be conversational and supportive. If the analysis fails, help troubleshoot and ask for another video.
+Be professional, concise, and ensure each step is completed before moving to the next.
 """,
     sub_agents=[currentTimeAgent, nanoBananaAgent],
-    tools=[video_inference_tool],
+    tools=[video_inference_tool, get_visuals_tool],
     output_key="final_paragraph",
 )
